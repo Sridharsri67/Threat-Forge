@@ -126,6 +126,9 @@ Threat Scoring & Correlation
             ↓
 Volatile In-Memory Database
 ```
+
+> **Architectural Transition:** The platform was migrated from a serverless architecture to a server-based architecture to reduce cold-start latency, improve API response handling, and provide more stable real-time IOC enrichment workflows.
+
 ---
 
 # 🛠️ Tech Stack
