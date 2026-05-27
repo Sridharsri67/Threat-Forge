@@ -1,22 +1,10 @@
-const mongoose = require("mongoose");
-
-let isConnected = false;
+const logger = require("../utils/logger");
 
 const connectDB = async () => {
-    if (isConnected) return;
-    try {
-        const conn = await mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/Threat-Forge", {
-            serverSelectionTimeoutMS: 3000 // Fast timeout
-        });
-        console.log(`MongoDB Connected: ${conn.connection.host}`);
-        isConnected = true;
-    } catch (error) {
-        console.error(`MongoDB Connection Error: ${error.message}`);
-        console.warn("MongoDB not running. Platform starting in Demo Mode (In-Memory Database).");
-        isConnected = false;
-    }
+    logger.info("Initializing Threat-Forge in Demo Mode...");
+    logger.info("Database: Volatile In-Memory Database (No MongoDB dependency)");
 };
 
-const isDbConnected = () => isConnected;
+const isDbConnected = () => false;
 
 module.exports = { connectDB, isDbConnected };

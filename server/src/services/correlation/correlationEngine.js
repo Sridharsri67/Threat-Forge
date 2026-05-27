@@ -1,4 +1,4 @@
-const IOC = require("../../models/IOC");
+const inMemoryDB = require("../../models/iocStore");
 
 exports.correlate = async (currentIOC) => {
     const correlations = [];
@@ -7,8 +7,8 @@ exports.correlate = async (currentIOC) => {
     const value = currentIOC.value;
     const tags = currentIOC.tags || [];
 
-    // Find all other IOCs
-    const allIOCs = await IOC.find({ _id: { $ne: id } });
+    // Find all other IOCs in our volatile in-memory database
+    const allIOCs = inMemoryDB.filter(ioc => ioc._id !== id);
 
     // 1. Tag correlation
     if (tags.length > 0) {

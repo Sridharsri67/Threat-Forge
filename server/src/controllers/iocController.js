@@ -1,5 +1,4 @@
-const IOC = require("../models/IOC");
-const { isDbConnected } = require("../config/db");
+const inMemoryDB = require("../models/iocStore");
 const virusTotalService = require("../services/enrichment/virusTotalService");
 const otxService = require("../services/enrichment/otxService");
 const abuseipdbService = require("../services/enrichment/abuseipdbService");
@@ -13,9 +12,6 @@ const pdfGenerator = require("../services/reports/pdfGenerator");
 const csvExporter = require("../services/reports/csvExporter");
 const htmlReport = require("../services/reports/htmlReport");
 const socketHandler = require("../sockets/socketHandler");
-
-// In-Memory Database for Demo Mode
-const inMemoryDB = [];
 
 // Helper to generate fake Mongo-like ObjectIDs for in-memory docs
 const generateId = () => {
@@ -56,78 +52,38 @@ exports.lookupIOC = async (req, res) => {
         const allTags = [...new Set([...vtTags, ...otxTags])].filter(Boolean).slice(0, 10);
 
         let ioc;
-
-        if (isDbConnected()) {
-            ioc = await IOC.findOne({ type, value });
-            if (ioc) {
-                ioc.virustotal = vtData;
-                ioc.otx = otxData;
-                ioc.abuseipdb = abuseData;
-                ioc.shodan = shodanData;
-                ioc.severity = scoring.severity;
-                ioc.tags = [...new Set([...(ioc.tags || []), ...allTags])];
-                await ioc.save();
-            } else {
-                ioc = new IOC({
-                    type,
-                    value,
-                    severity: scoring.severity,
-                    virustotal: vtData,
-                    otx: otxData,
-                    abuseipdb: abuseData,
-                    tags: allTags
-                });
-                await ioc.save();
-            }
+        const existingIndex = inMemoryDB.findIndex(i => i.type === type && i.value === value);
+        if (existingIndex > -1) {
+            const existing = inMemoryDB[existingIndex];
+            existing.virustotal = vtData;
+            existing.otx = otxData;
+            existing.abuseipdb = abuseData;
+            existing.shodan = shodanData;
+            existing.severity = scoring.severity;
+            existing.tags = [...new Set([...(existing.tags || []), ...allTags])];
+            existing.updatedAt = new Date();
+            ioc = existing;
         } else {
-            // In-Memory Mode
-            const existingIndex = inMemoryDB.findIndex(i => i.type === type && i.value === value);
-            if (existingIndex > -1) {
-                const existing = inMemoryDB[existingIndex];
-                existing.virustotal = vtData;
-                existing.otx = otxData;
-                existing.abuseipdb = abuseData;
-                existing.shodan = shodanData;
-                existing.severity = scoring.severity;
-                existing.tags = [...new Set([...(existing.tags || []), ...allTags])];
-                existing.updatedAt = new Date();
-                ioc = existing;
-            } else {
-                ioc = {
-                    _id: generateId(),
-                    type,
-                    value,
-                    severity: scoring.severity,
-                    status: "active",
-                    virustotal: vtData,
-                    otx: otxData,
-                    abuseipdb: abuseData,
-                    shodan: shodanData,
-                    tags: allTags,
-                    notes: [],
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                };
-                inMemoryDB.push(ioc);
-            }
+            ioc = {
+                _id: generateId(),
+                type,
+                value,
+                severity: scoring.severity,
+                status: "active",
+                virustotal: vtData,
+                otx: otxData,
+                abuseipdb: abuseData,
+                shodan: shodanData,
+                tags: allTags,
+                notes: [],
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
+            inMemoryDB.push(ioc);
         }
 
         const mitreMappings = mitreMapper.mapTags(ioc.tags);
-        
-        // Handle in-memory correlation
-        let correlations = [];
-        if (isDbConnected()) {
-            correlations = await correlationEngine.correlate(ioc);
-        } else {
-            // Mock local correlation engine by filtering inMemoryDB
-            correlations = inMemoryDB
-                .filter(item => item._id !== ioc._id && (item.type === ioc.type || item.tags.some(t => ioc.tags.includes(t))))
-                .map(item => ({
-                    type: "shared_tag",
-                    ioc: { id: item._id, type: item.type, value: item.value, severity: item.severity },
-                    description: `Shares tag indicator link: ${(item.tags.filter(t => ioc.tags.includes(t))).join(", ") || "same network type"}`
-                }));
-        }
+        const correlations = await correlationEngine.correlate(ioc);
 
         // Emit real-time alert via sockets
         try {
@@ -166,48 +122,25 @@ exports.getAllIOCs = async (req, res) => {
     try {
         const { type, severity, status, search, page = 1, limit = 10 } = req.query;
 
-        if (isDbConnected()) {
-            const query = {};
-            if (type) query.type = type;
-            if (severity) query.severity = severity;
-            if (status) query.status = status;
-            if (search) query.value = { $regex: search, $options: "i" };
+        let filtered = [...inMemoryDB];
+        if (type) filtered = filtered.filter(i => i.type === type);
+        if (severity) filtered = filtered.filter(i => i.severity === severity);
+        if (status) filtered = filtered.filter(i => i.status === status);
+        if (search) filtered = filtered.filter(i => i.value.toLowerCase().includes(search.toLowerCase()));
 
-            const count = await IOC.countDocuments(query);
-            const iocs = await IOC.find(query)
-                .sort({ createdAt: -1 })
-                .skip((page - 1) * limit)
-                .limit(parseInt(limit));
+        // Sort by createdAt descending
+        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-            return res.json({
-                success: true,
-                count,
-                page: parseInt(page),
-                pages: Math.ceil(count / limit),
-                iocs
-            });
-        } else {
-            // In-Memory Mode filtering
-            let filtered = [...inMemoryDB];
-            if (type) filtered = filtered.filter(i => i.type === type);
-            if (severity) filtered = filtered.filter(i => i.severity === severity);
-            if (status) filtered = filtered.filter(i => i.status === status);
-            if (search) filtered = filtered.filter(i => i.value.toLowerCase().includes(search.toLowerCase()));
+        const count = filtered.length;
+        const paginated = filtered.slice((page - 1) * limit, page * limit);
 
-            // Sort by createdAt descending
-            filtered.sort((a, b) => b.createdAt - a.createdAt);
-
-            const count = filtered.length;
-            const paginated = filtered.slice((page - 1) * limit, page * limit);
-
-            return res.json({
-                success: true,
-                count,
-                page: parseInt(page),
-                pages: Math.ceil(count / limit) || 1,
-                iocs: paginated
-            });
-        }
+        return res.json({
+            success: true,
+            count,
+            page: parseInt(page),
+            pages: Math.ceil(count / limit) || 1,
+            iocs: paginated
+        });
     } catch (error) {
         console.error("Get IOCs Error:", error);
         return res.status(500).json({
@@ -222,13 +155,7 @@ exports.getAllIOCs = async (req, res) => {
 exports.getIOCById = async (req, res) => {
     try {
         const { id } = req.params;
-        let ioc;
-
-        if (isDbConnected()) {
-            ioc = await IOC.findById(id);
-        } else {
-            ioc = inMemoryDB.find(i => i._id === id);
-        }
+        const ioc = inMemoryDB.find(i => i._id === id);
 
         if (!ioc) {
             return res.status(404).json({
@@ -238,19 +165,7 @@ exports.getIOCById = async (req, res) => {
         }
 
         const mitreMappings = mitreMapper.mapTags(ioc.tags);
-        
-        let correlations = [];
-        if (isDbConnected()) {
-            correlations = await correlationEngine.correlate(ioc);
-        } else {
-            correlations = inMemoryDB
-                .filter(item => item._id !== ioc._id && (item.type === ioc.type || item.tags.some(t => ioc.tags.includes(t))))
-                .map(item => ({
-                    type: "shared_tag",
-                    ioc: { id: item._id, type: item.type, value: item.value, severity: item.severity },
-                    description: `Shares tag indicator link: ${(item.tags.filter(t => ioc.tags.includes(t))).join(", ") || "same network type"}`
-                }));
-        }
+        const correlations = await correlationEngine.correlate(ioc);
 
         const scoring = reputationEngine.calculateReputation(
             ioc.type, 
@@ -283,47 +198,25 @@ exports.updateIOC = async (req, res) => {
         const { id } = req.params;
         const { status, tags, note } = req.body;
 
-        let ioc;
-
-        if (isDbConnected()) {
-            ioc = await IOC.findById(id);
-            if (!ioc) {
-                return res.status(404).json({
-                    success: false,
-                    message: "IOC not found"
-                });
-            }
-
-            if (status) ioc.status = status;
-            if (tags) ioc.tags = tags;
-            if (note) {
-                ioc.notes.push({
-                    text: note,
-                    analyst: req.headers["x-analyst-name"] || "Analyst"
-                });
-            }
-            await ioc.save();
-        } else {
-            ioc = inMemoryDB.find(i => i._id === id);
-            if (!ioc) {
-                return res.status(404).json({
-                    success: false,
-                    message: "IOC not found"
-                });
-            }
-
-            if (status) ioc.status = status;
-            if (tags) ioc.tags = tags;
-            if (note) {
-                ioc.notes.push({
-                    _id: generateId(),
-                    text: note,
-                    analyst: req.headers["x-analyst-name"] || "Analyst",
-                    createdAt: new Date()
-                });
-            }
-            ioc.updatedAt = new Date();
+        const ioc = inMemoryDB.find(i => i._id === id);
+        if (!ioc) {
+            return res.status(404).json({
+                success: false,
+                message: "IOC not found"
+            });
         }
+
+        if (status) ioc.status = status;
+        if (tags) ioc.tags = tags;
+        if (note) {
+            ioc.notes.push({
+                _id: generateId(),
+                text: note,
+                analyst: req.headers["x-analyst-name"] || "Analyst",
+                createdAt: new Date()
+            });
+        }
+        ioc.updatedAt = new Date();
 
         return res.json({
             success: true,
@@ -344,25 +237,14 @@ exports.updateIOC = async (req, res) => {
 exports.deleteIOC = async (req, res) => {
     try {
         const { id } = req.params;
-
-        if (isDbConnected()) {
-            const result = await IOC.findByIdAndDelete(id);
-            if (!result) {
-                return res.status(404).json({
-                    success: false,
-                    message: "IOC not found"
-                });
-            }
-        } else {
-            const idx = inMemoryDB.findIndex(i => i._id === id);
-            if (idx === -1) {
-                return res.status(404).json({
-                    success: false,
-                    message: "IOC not found"
-                });
-            }
-            inMemoryDB.splice(idx, 1);
+        const idx = inMemoryDB.findIndex(i => i._id === id);
+        if (idx === -1) {
+            return res.status(404).json({
+                success: false,
+                message: "IOC not found"
+            });
         }
+        inMemoryDB.splice(idx, 1);
 
         return res.json({
             success: true,
@@ -381,64 +263,26 @@ exports.deleteIOC = async (req, res) => {
 // 6. Get Dashboard Stats
 exports.getDashboardStats = async (req, res) => {
     try {
-        if (isDbConnected()) {
-            const total = await IOC.countDocuments();
-            const severityStats = await IOC.aggregate([
-                { $group: { _id: "$severity", count: { $sum: 1 } } }
-            ]);
-            const severity = { Critical: 0, High: 0, Medium: 0, Low: 0, Informational: 0 };
-            severityStats.forEach(stat => {
-                if (stat._id in severity) severity[stat._id] = stat.count;
-            });
+        const total = inMemoryDB.length;
+        const severity = { Critical: 0, High: 0, Medium: 0, Low: 0, Informational: 0 };
+        const type = { ip: 0, domain: 0, url: 0, hash: 0 };
+        const status = { active: 0, false_positive: 0, whitelisted: 0 };
 
-            const typeStats = await IOC.aggregate([
-                { $group: { _id: "$type", count: { $sum: 1 } } }
-            ]);
-            const type = { ip: 0, domain: 0, url: 0, hash: 0 };
-            typeStats.forEach(stat => {
-                if (stat._id in type) type[stat._id] = stat.count;
-            });
+        inMemoryDB.forEach(ioc => {
+            if (ioc.severity in severity) severity[ioc.severity]++;
+            if (ioc.type in type) type[ioc.type]++;
+            if (ioc.status in status) status[ioc.status]++;
+        });
 
-            const statusStats = await IOC.aggregate([
-                { $group: { _id: "$status", count: { $sum: 1 } } }
-            ]);
-            const status = { active: 0, false_positive: 0, whitelisted: 0 };
-            statusStats.forEach(stat => {
-                if (stat._id in status) status[stat._id] = stat.count;
-            });
+        const recent = [...inMemoryDB]
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+            .slice(0, 5);
 
-            const recent = await IOC.find()
-                .sort({ createdAt: -1 })
-                .limit(5);
-
-            return res.json({
-                success: true,
-                stats: { total, severity, type, status },
-                recent
-            });
-        } else {
-            // In-Memory Stats
-            const total = inMemoryDB.length;
-            const severity = { Critical: 0, High: 0, Medium: 0, Low: 0, Informational: 0 };
-            const type = { ip: 0, domain: 0, url: 0, hash: 0 };
-            const status = { active: 0, false_positive: 0, whitelisted: 0 };
-
-            inMemoryDB.forEach(ioc => {
-                if (ioc.severity in severity) severity[ioc.severity]++;
-                if (ioc.type in type) type[ioc.type]++;
-                if (ioc.status in status) status[ioc.status]++;
-            });
-
-            const recent = [...inMemoryDB]
-                .sort((a, b) => b.createdAt - a.createdAt)
-                .slice(0, 5);
-
-            return res.json({
-                success: true,
-                stats: { total, severity, type, status },
-                recent
-            });
-        }
+        return res.json({
+            success: true,
+            stats: { total, severity, type, status },
+            recent
+        });
     } catch (error) {
         console.error("Get Dashboard Stats Error:", error);
         return res.status(500).json({
@@ -486,60 +330,34 @@ exports.bulkLookup = async (req, res) => {
                 const allTags = [...new Set([...vtTags, ...otxTags])].filter(Boolean).slice(0, 10);
 
                 let ioc;
-
-                if (isDbConnected()) {
-                    ioc = await IOC.findOne({ type, value });
-                    if (ioc) {
-                        ioc.virustotal = vtData;
-                        ioc.otx = otxData;
-                        ioc.abuseipdb = abuseData;
-                        ioc.shodan = shodanData;
-                        ioc.severity = scoring.severity;
-                        ioc.tags = [...new Set([...(ioc.tags || []), ...allTags])];
-                        await ioc.save();
-                    } else {
-                        ioc = new IOC({
-                            type,
-                            value,
-                            severity: scoring.severity,
-                            virustotal: vtData,
-                            otx: otxData,
-                            abuseipdb: abuseData,
-                            shodan: shodanData,
-                            tags: allTags
-                        });
-                        await ioc.save();
-                    }
+                const existingIndex = inMemoryDB.findIndex(i => i.type === type && i.value === value);
+                if (existingIndex > -1) {
+                    const existing = inMemoryDB[existingIndex];
+                    existing.virustotal = vtData;
+                    existing.otx = otxData;
+                    existing.abuseipdb = abuseData;
+                    existing.shodan = shodanData;
+                    existing.severity = scoring.severity;
+                    existing.tags = [...new Set([...(existing.tags || []), ...allTags])];
+                    existing.updatedAt = new Date();
+                    ioc = existing;
                 } else {
-                    const existingIndex = inMemoryDB.findIndex(i => i.type === type && i.value === value);
-                    if (existingIndex > -1) {
-                        const existing = inMemoryDB[existingIndex];
-                        existing.virustotal = vtData;
-                        existing.otx = otxData;
-                        existing.abuseipdb = abuseData;
-                        existing.shodan = shodanData;
-                        existing.severity = scoring.severity;
-                        existing.tags = [...new Set([...(existing.tags || []), ...allTags])];
-                        existing.updatedAt = new Date();
-                        ioc = existing;
-                    } else {
-                        ioc = {
-                            _id: generateId(),
-                            type,
-                            value,
-                            severity: scoring.severity,
-                            status: "active",
-                            virustotal: vtData,
-                            otx: otxData,
-                            abuseipdb: abuseData,
-                            shodan: shodanData,
-                            tags: allTags,
-                            notes: [],
-                            createdAt: new Date(),
-                            updatedAt: new Date()
-                        };
-                        inMemoryDB.push(ioc);
-                    }
+                    ioc = {
+                        _id: generateId(),
+                        type,
+                        value,
+                        severity: scoring.severity,
+                        status: "active",
+                        virustotal: vtData,
+                        otx: otxData,
+                        abuseipdb: abuseData,
+                        shodan: shodanData,
+                        tags: allTags,
+                        notes: [],
+                        createdAt: new Date(),
+                        updatedAt: new Date()
+                    };
+                    inMemoryDB.push(ioc);
                 }
 
                 results.push({
@@ -579,13 +397,7 @@ exports.exportReport = async (req, res) => {
         const { id } = req.params;
         const { format = "pdf" } = req.query;
 
-        let ioc;
-
-        if (isDbConnected()) {
-            ioc = await IOC.findById(id);
-        } else {
-            ioc = inMemoryDB.find(i => i._id === id);
-        }
+        const ioc = inMemoryDB.find(i => i._id === id);
 
         if (!ioc) {
             return res.status(404).json({
@@ -595,19 +407,7 @@ exports.exportReport = async (req, res) => {
         }
 
         const mitreMappings = mitreMapper.mapTags(ioc.tags);
-        
-        let correlations = [];
-        if (isDbConnected()) {
-            correlations = await correlationEngine.correlate(ioc);
-        } else {
-            correlations = inMemoryDB
-                .filter(item => item._id !== ioc._id && (item.type === ioc.type || item.tags.some(t => ioc.tags.includes(t))))
-                .map(item => ({
-                    type: "shared_tag",
-                    ioc: { id: item._id, type: item.type, value: item.value, severity: item.severity },
-                    description: `Shares tag indicator link: ${(item.tags.filter(t => ioc.tags.includes(t))).join(", ") || "same network type"}`
-                }));
-        }
+        const correlations = await correlationEngine.correlate(ioc);
 
         const cleanVal = ioc.value.replace(/[^a-zA-Z0-9]/g, "_");
 

@@ -1,7 +1,9 @@
 // API endpoints for Threat Forge IOC Platform
 
+const BASE_URL = import.meta.env.VITE_API_URL || "";
+
 export const lookupIOC = async (type, value) => {
-  const response = await fetch("/api/ioc/lookup", {
+  const response = await fetch(`${BASE_URL}/api/ioc/lookup`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -12,7 +14,7 @@ export const lookupIOC = async (type, value) => {
 };
 
 export const bulkLookup = async (iocs) => {
-  const response = await fetch("/api/ioc/bulk", {
+  const response = await fetch(`${BASE_URL}/api/ioc/bulk`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -23,7 +25,7 @@ export const bulkLookup = async (iocs) => {
 };
 
 export const getDashboardStats = async () => {
-  const response = await fetch("/api/ioc/stats");
+  const response = await fetch(`${BASE_URL}/api/ioc/stats`);
   return response.json();
 };
 
@@ -37,17 +39,17 @@ export const getAllIOCs = async (filters = {}) => {
   params.append("page", page);
   params.append("limit", limit);
 
-  const response = await fetch(`/api/ioc?${params.toString()}`);
+  const response = await fetch(`${BASE_URL}/api/ioc?${params.toString()}`);
   return response.json();
 };
 
 export const getIOCById = async (id) => {
-  const response = await fetch(`/api/ioc/${id}`);
+  const response = await fetch(`${BASE_URL}/api/ioc/${id}`);
   return response.json();
 };
 
 export const updateIOC = async (id, data, analystName = "Analyst") => {
-  const response = await fetch(`/api/ioc/${id}`, {
+  const response = await fetch(`${BASE_URL}/api/ioc/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -59,12 +61,12 @@ export const updateIOC = async (id, data, analystName = "Analyst") => {
 };
 
 export const deleteIOC = async (id) => {
-  const response = await fetch(`/api/ioc/${id}`, {
+  const response = await fetch(`${BASE_URL}/api/ioc/${id}`, {
     method: "DELETE"
   });
   return response.json();
 };
 
 export const exportReportUrl = (id, format) => {
-  return `/api/ioc/${id}/export?format=${format}`;
+  return `${BASE_URL}/api/ioc/${id}/export?format=${format}`;
 };

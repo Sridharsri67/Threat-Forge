@@ -13,7 +13,7 @@ const { requestLogger } = require("./middleware/loggerMiddleware");
 const { errorHandler, notFound } = require("./middleware/errorMiddleware");
 const logger = require("./utils/logger");
 
-// Initialize Database
+// Initialize Database (Demo / Volatile In-Memory Mode)
 connectDB();
 
 const app = express();
@@ -44,11 +44,9 @@ app.use("/api/ioc", iocRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
-    const PORT = process.env.PORT || 5000;
-    server.listen(PORT, () => {
-        logger.info(`Threat Forge server running on port ${PORT}`);
-    });
-}
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+    logger.info(`Threat Forge server running on port ${PORT}`);
+});
 
 module.exports = app;

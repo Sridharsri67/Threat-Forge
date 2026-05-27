@@ -637,18 +637,32 @@ Last Updated: ${new Date(ioc.updatedAt || ioc.createdAt).toISOString()}`;
             {/* Main Result Card */}
             <div className="shodan-result-item">
               <div className="shodan-result-left">
-                <div className="shodan-result-header">
+                <div className="shodan-result-header" style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                   <span className="shodan-result-ip mono">{ioc.value}</span>
+                  {(ioc.type === "url" || ioc.type === "domain" || ioc.type === "ip") && (
+                    <a 
+                      href={ioc.value.startsWith("http://") || ioc.value.startsWith("https://") ? ioc.value : `http://${ioc.value}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="shodan-ext-link"
+                      style={{ color: "#38bdf8", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.9rem" }}
+                      title="Visit website directly"
+                    >
+                      <Globe size={16} /> <span style={{ fontSize: "0.8rem", textTransform: "uppercase", fontWeight: 600 }}>Visit</span>
+                    </a>
+                  )}
                   <a 
                     href={`https://www.virustotal.com/gui/search/${ioc.value}`} 
                     target="_blank" 
                     rel="noopener noreferrer" 
                     className="shodan-ext-link"
-                    style={{ color: "#ef4444" }}
+                    style={{ color: "#ef4444", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.9rem" }}
+                    title="Search on VirusTotal"
                   >
-                    ↗
+                    ↗ <span style={{ fontSize: "0.8rem", textTransform: "uppercase", fontWeight: 600 }}>VirusTotal</span>
                   </a>
                 </div>
+
 
                 <div className="shodan-result-org">
                   {ioc.abuseipdb?.isp && (
