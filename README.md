@@ -1,4 +1,4 @@
-# ThreatForge
+# Threat Forge
 
 > Advanced Threat Intelligence & IOC Enrichment Platform
 
@@ -13,7 +13,7 @@
 
 # 📖 Overview
 
-ThreatForge is a SOC-focused Threat Intelligence Platform (TIP) designed to automate IOC enrichment, threat scoring, malware intelligence gathering, and analyst investigation workflows.
+Threat Forge is a SOC-focused Threat Intelligence Platform (TIP) designed to automate IOC enrichment, threat scoring, malware intelligence gathering, and analyst investigation workflows.
 
 The platform transforms raw Indicators of Compromise (IOCs) into actionable threat intelligence by integrating multiple threat intelligence sources such as:
 
@@ -23,7 +23,7 @@ The platform transforms raw Indicators of Compromise (IOCs) into actionable thre
 - AbuseIPDB
 - CVE Databases
 
-ThreatForge helps:
+Threat Forge helps:
 - SOC Analysts
 - Threat Hunters
 - DFIR Teams
@@ -35,7 +35,7 @@ investigate suspicious infrastructure faster and more efficiently.
 
 # ⚙️ What It Does
 
-ThreatForge analyzes and enriches suspicious Indicators of Compromise (IOCs) including:
+Threat Forge analyzes and enriches suspicious Indicators of Compromise (IOCs) including:
 
 - IP Addresses
 - Domains
@@ -53,7 +53,7 @@ The platform then:
 
 # 🧠 IOC Enrichment Engine
 
-ThreatForge automatically gathers:
+Threat Forge automatically gathers:
 
 - malicious detections
 - reputation scores
@@ -70,7 +70,7 @@ from multiple threat intelligence providers.
 
 # 📈 Dynamic Threat Scoring
 
-ThreatForge calculates:
+Threat Forge calculates:
 
 - IOC severity
 - maliciousness confidence
@@ -86,7 +86,7 @@ Example:
 
 # 🔗 Threat Correlation Engine
 
-ThreatForge correlates:
+Threat Forge correlates:
 
 - malware hashes
 - domains
@@ -100,7 +100,7 @@ to uncover relationships between malicious infrastructure and attack campaigns.
 
 # 📄 Automated Reporting
 
-ThreatForge generates:
+Threat Forge generates:
 
 - PDF reports
 - CSV exports
@@ -165,7 +165,7 @@ MongoDB Intelligence Database
 # 📂 Project Structure
 
 ```text
-ThreatForge/
+Threat Forge/
 │
 ├── client/
 │   ├── src/
@@ -323,7 +323,7 @@ Report Generation
 
 # 🔒 Security Disclaimer
 
-ThreatForge is intended strictly for:
+Threat Forge is intended strictly for:
 
 - defensive security operations
 - threat intelligence research
@@ -345,7 +345,7 @@ Cybersecurity Enthusiast | SOC | Threat Intelligence | DFIR | Security Automatio
 
 # 🛡️ License
 
-MIT License © 2026 ThreatForge
+MIT License © 2026 Threat Forge
 
 ---
 
