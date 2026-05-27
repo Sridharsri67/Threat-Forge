@@ -44,8 +44,11 @@ app.use("/api/ioc", iocRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+    const PORT = process.env.PORT || 5000;
+    server.listen(PORT, () => {
+        logger.info(`Threat Forge server running on port ${PORT}`);
+    });
+}
 
-server.listen(PORT, () => {
-    logger.info(`Threat Forge server running on port ${PORT}`);
-});
+module.exports = app;

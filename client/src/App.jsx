@@ -153,8 +153,9 @@ function App() {
   useEffect(() => {
     loadStats();
 
-    // Setup WebSockets
-    const socket = io("http://localhost:5050");
+    // Setup WebSockets (dynamic URL for local dev vs production)
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (window.location.hostname === "localhost" ? "http://localhost:5050" : window.location.origin);
+    const socket = io(socketUrl);
     
     socket.on("new-ioc-alert", (newIOC) => {
       // Add socket alert
