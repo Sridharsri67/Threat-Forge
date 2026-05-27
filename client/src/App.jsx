@@ -97,6 +97,21 @@ function App() {
   const analystName = "Analyst";
   const navContainerRef = useRef(null);
   const [indicatorStyle, setIndicatorStyle] = useState({ left: 0, width: 0, opacity: 0 });
+  const socketRef = useRef(null);
+
+  const addAlert = (ioc, score) => {
+    setAlerts((prev) => [
+      {
+        id: Math.random().toString(),
+        value: ioc.value,
+        type: ioc.type,
+        severity: ioc.severity,
+        score: score,
+        time: new Date(ioc.createdAt || new Date()).toLocaleTimeString()
+      },
+      ...prev
+    ]);
+  };
 
   // Update navbar indicator position dynamically for sliding effect
   useEffect(() => {
@@ -154,30 +169,36 @@ function App() {
     loadStats();
 
     // Setup WebSockets (dynamic URL for local dev vs production)
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || (window.location.hostname === "localhost" ? "http://localhost:5050" : window.location.origin);
-    const socket = io(socketUrl);
+    // Avoid connecting to Vercel host directly since Vercel's serverless functions don't support persistent WebSockets/Socket.io
+    const isLocal = window.location.hostname === "localhost" || 
+                    window.location.hostname === "127.0.0.1" || 
+                    window.location.hostname.startsWith("192.168.") || 
+                    window.location.hostname.startsWith("10.");
+                    
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (isLocal ? `http://${window.location.hostname}:5050` : null);
     
-    socket.on("new-ioc-alert", (newIOC) => {
-      // Add socket alert
-      setAlerts((prev) => [
-        {
-          id: Math.random().toString(),
-          value: newIOC.value,
-          type: newIOC.type,
-          severity: newIOC.severity,
-          score: newIOC.score,
-          time: new Date(newIOC.createdAt).toLocaleTimeString()
-        },
-        ...prev
-      ]);
+    if (socketUrl) {
+      console.log(`Initializing WebSocket connection to: ${socketUrl}`);
+      const socket = io(socketUrl, {
+        transports: ["websocket", "polling"],
+        autoConnect: true
+      });
+      socketRef.current = socket;
       
-      // Auto reload dashboard stats
-      loadStats();
-    });
+      socket.on("new-ioc-alert", (newIOC) => {
+        // Add socket alert
+        addAlert(newIOC, newIOC.score);
+        
+        // Auto reload dashboard stats
+        loadStats();
+      });
 
-    return () => {
-      socket.disconnect();
-    };
+      return () => {
+        socket.disconnect();
+      };
+    } else {
+      console.log("WebSocket connection skipped: No VITE_SOCKET_URL environment variable provided for production deployment, and client is not running on localhost.");
+    }
   }, []);
 
   const handleQuickLookup = async (e) => {
@@ -191,6 +212,11 @@ function App() {
         setSelectedIOCId(result.ioc._id);
         setQuickSearchValue("");
         loadStats(); // reload stats in background
+        
+        // If WebSocket is not connected/running, manually trigger a local alert for user feedback
+        if (!socketRef.current) {
+          addAlert(result.ioc, result.score);
+        }
       } else {
         alert(result.message || "Lookup failed.");
       }
