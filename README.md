@@ -126,9 +126,6 @@ Threat Scoring & Correlation
             ↓
 Volatile In-Memory Database
 ```
-
-> **Architectural Transition:** Converted the architecture from serverless to server-based due to high response latency, cold-start delays, and deployment limitations in serverless environments. A persistent backend improved real-time IOC enrichment performance, API orchestration, dashboard responsiveness, and overall SOC investigation workflow efficiency.
-
 ---
 
 # 🛠️ Tech Stack
