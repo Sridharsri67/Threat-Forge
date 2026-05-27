@@ -4,7 +4,7 @@
 
 ![Node.js](https://img.shields.io/badge/Node.js-Backend-green)
 ![Express](https://img.shields.io/badge/Express-API-black)
-![MongoDB](https://img.shields.io/badge/MongoDB-Database-green)
+![In-Memory](https://img.shields.io/badge/Database-In--Memory-orange)
 ![React](https://img.shields.io/badge/React-Frontend-blue)
 ![ThreatIntel](https://img.shields.io/badge/Threat-Intelligence-red)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
@@ -124,8 +124,10 @@ IOC Enrichment Services
             ↓
 Threat Scoring & Correlation
             ↓
-MongoDB Intelligence Database
+Volatile In-Memory Database
 ```
+
+> **Architectural Transition:** Converted the architecture from serverless to server-based due to high response latency, cold-start delays, and deployment limitations in serverless environments. A persistent backend improved real-time IOC enrichment performance, API orchestration, dashboard responsiveness, and overall SOC investigation workflow efficiency.
 
 ---
 
@@ -148,8 +150,8 @@ MongoDB Intelligence Database
 ---
 
 ## Database
-- MongoDB
-- Mongoose
+- Volatile In-Memory Database (Demo Mode / Local Store)
+- No MongoDB / Mongoose dependency (lightweight, zero-setup)
 
 ---
 
