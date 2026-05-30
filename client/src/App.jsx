@@ -1,15 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { 
-  ShieldAlert, 
   Search, 
-  LayoutDashboard, 
-  History, 
-  FileSpreadsheet, 
   Bell, 
-  User, 
-  ArrowRight,
   RefreshCw,
-  Plus,
   Github,
   Mail
 } from "lucide-react";
@@ -19,8 +12,6 @@ import IOCList from "./components/IOCList";
 import IOCDetails from "./components/IOCDetails";
 import BulkLookup from "./components/BulkLookup";
 import { io } from "socket.io-client";
-import { ThreeCyberBackground } from "./components/ThreeCyberBackground";
-import { LiveThreatFeed } from "./components/LiveThreatFeed";
 import { WorldMap } from "./components/WorldMap";
 
 // Coordinates for key tech and security hubs for global threat visualization
@@ -420,7 +411,7 @@ function App() {
       <footer className="app-footer">
         <div className="footer-content">
           <p className="footer-text">
-            Built by <span className="footer-name">Sridhar Konda</span><span className="footer-divider">|</span><span className="footer-role">SecOps Analyst</span>
+            Built by <span className="footer-name">Sridhar Konda</span><span className="footer-divider">|</span><span className="footer-role">SecOps Engineer</span>
           </p>
           <div className="footer-socials">
             <a 
