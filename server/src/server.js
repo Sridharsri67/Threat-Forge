@@ -1,6 +1,9 @@
 const dotenv = require("dotenv");
 dotenv.config();
 
+// Trigger nodemon restart to pick up corrected .env file (removed unused MONGO_URI)
+
+
 const express = require("express");
 const http = require("http");
 const cors = require("cors");

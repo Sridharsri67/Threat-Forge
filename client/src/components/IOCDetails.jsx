@@ -651,16 +651,6 @@ Last Updated: ${new Date(ioc.updatedAt || ioc.createdAt).toISOString()}`;
                       <Globe size={16} /> <span style={{ fontSize: "0.8rem", textTransform: "uppercase", fontWeight: 600 }}>Visit</span>
                     </a>
                   )}
-                  <a 
-                    href={`https://www.virustotal.com/gui/search/${ioc.value}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="shodan-ext-link"
-                    style={{ color: "#ef4444", display: "inline-flex", alignItems: "center", gap: "4px", fontSize: "0.9rem" }}
-                    title="Search on VirusTotal"
-                  >
-                    ↗ <span style={{ fontSize: "0.8rem", textTransform: "uppercase", fontWeight: 600 }}>VirusTotal</span>
-                  </a>
                 </div>
 
 

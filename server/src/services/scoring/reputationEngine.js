@@ -1,4 +1,29 @@
+const BENIGN_WHITELIST = new Set([
+    "8.8.8.8",
+    "8.8.4.4",
+    "1.1.1.1",
+    "1.0.0.1",
+    "9.9.9.9",
+    "149.112.112.112"
+]);
+
 exports.calculateReputation = (type, vtData, otxData, abuseipdbData = null, shodanData = null) => {
+    const ipAddress = abuseipdbData?.ipAddress || shodanData?.ipAddress;
+    
+    // Check if the IP is in the benign whitelist
+    if (type === "ip" && ipAddress && BENIGN_WHITELIST.has(ipAddress)) {
+        return {
+            score: 0,
+            severity: "Informational",
+            breakdown: {
+                vtScore: 0,
+                otxScore: 0,
+                abuseScore: 0,
+                shodanScore: 0
+            }
+        };
+    }
+
     let score = 0;
     const weights = {
         ip: { vt: 0.3, otx: 0.2, abuse: 0.4, shodan: 0.1 },
